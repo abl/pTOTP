@@ -1,3 +1,9 @@
+# DISCLAIMER
+
+I don't use this as my primary TOTP source and neither should you. I have not yet fully tested this with an actual Google account - while the implementation is a trivial modification of the Google Authenticator sources, it's possible something unique to the Pebble platform may cause issues.
+
+This is meant to be used WITH another, reliable, mobile authenticator - no warranty express or implied.
+
 # Simple Pebble TOTP
 
 ## Overview
@@ -7,7 +13,7 @@ Note that a customized wscript is used - the WAF equivalent of Makefile - this i
 
 ## Building
 
-Modify `src/config.h` to match your timezone (remember to adjust for DST) and your base32-encoded secret key.
+Modify `src/config.h` to match your timezone (remember to adjust for DST) and your base32-encoded secret key (the four groups of four letters from https://accounts.google.com/b/0/SmsAuthConfig - make sure to remove the spaces and capitalize the letters.)
 
 ## Usage
 
