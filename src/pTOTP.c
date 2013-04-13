@@ -35,8 +35,8 @@ unsigned int genTime;
 unsigned int lastTick;
 
 //                                 1           2
-//                      0123455678901223456789901223456788
-char displayBuffer[] = "TOTPb\n000000\nGMT-12\n30\nGmail\0";
+//                      01234556789012234567899012233
+char displayBuffer[] = "TOTPb\n000000\nGMT-12\n30\n\0";
 int tz_offset = OFFSET;
 
 void redraw() {
