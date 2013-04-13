@@ -1,0 +1,7 @@
+Licenses are reproduced in pTOTP.c but are all under Apache 2.0:
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+get_unix_time written by Hexxeh with minor modifications by Aleksandyr
+
+Original work will be released under a BSD-like license; contact the author for specifics.
