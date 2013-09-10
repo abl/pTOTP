@@ -16,92 +16,86 @@
 
 #include "generate.h"
 #include "unixtime.h"
+#include "timezone.h"
 
 #define MY_UUID { 0xF3, 0x61, 0x70, 0x30, 0x87, 0x06, 0x43, 0xB6, 0xAD, 0xDE, 0xD7, 0x3F, 0xDB, 0x38, 0x02, 0x44 }
 PBL_APP_INFO(MY_UUID,
-             "OTP", "Public Domain",
+             "pTOTP", "Public Domain",
              1, 0, /* App version */
              DEFAULT_MENU_ICON,
              APP_INFO_STANDARD_APP);
 
 Window window;
 
-TextLayer textLayer;
+TextLayer currentKey, currentCode, currentTime;
 
-int oldCode = -1;
-unsigned int genTime;
-unsigned int lastTick;
+unsigned short keyCount = 8;
+unsigned short keyIndex = 0;
 
-//                                 1           2
-//                      01234556789012234567899012233
-char displayBuffer[] = "TOTPb\n000000\nGMT-12\n30\n\0";
-int tz_offset;
-static char secretKey[33];
+unsigned short timeZoneIndex = 0;
 
-void redraw() {
-  int code = oldCode;
-
-  if(code == -1) {
-    displayBuffer[6] = ' ';
-    displayBuffer[7] = ' ';
-    displayBuffer[8] = ' ';
-    displayBuffer[9] = ' ';
-    displayBuffer[10] = ' ';
-    displayBuffer[11] = ' ';
-
-    //displayBuffer[20] = ' ';
-    //displayBuffer[21] = ' ';
-  }
-  else {
-    for(int x=0;x<6;x++) {
-      displayBuffer[11-x] = '0'+(code % 10);
-      code /= 10;
-    }
-
-    displayBuffer[20] = '0' + lastTick / 10;
-    displayBuffer[21] = '0' + lastTick % 10;
+void redraw(unsigned int code) {
+  static char codeDisplayBuffer[7] = "000000";
+  
+  for(int x=0;x<6;x++) {
+    codeDisplayBuffer[6-x] = '0'+(code % 10);
+    code /= 10;
   }
 
-  int tzo = tz_offset;
-  if(tzo < 0) {
-    tzo = -tzo;
-    displayBuffer[16] = '-';
-  } else {
-    displayBuffer[16] = '+';
-  }
-
-  if(tzo > 9) {
-    displayBuffer[17] = '1';
-    tzo -= 10;
-  } else {
-    displayBuffer[17] = '0';
-  }
-
-  displayBuffer[18] = '0' + tzo;
-
-  text_layer_set_text(&textLayer, displayBuffer);
+  text_layer_set_text(&currentCode, codeDisplayBuffer);
 }
 
-bool recode() {
+
+void recode(char *secretKey, bool keyChange) {
+  static unsigned int lastCode = 0;
+  static unsigned short oldTimeZoneIndex = 255;
+  static unsigned int lastQuantizedTimeGenerated = 0;
+
   const char *key = secretKey;
 
-  genTime = get_unix_time(0);
-  lastTick = 30 - genTime % 30;
-  genTime /= 30;
-
-  unsigned int cTime = get_unix_time(-tz_offset);
-
-  unsigned int quantized_time = cTime/30;
-
-
-  int code = generateCode(key, quantized_time);
-
-  if(oldCode != code) {
-    oldCode = code;
-    return true;
+  if(timeZoneIndex != oldTimeZoneIndex) {
+    text_layer_set_text(&currentTime, TIMEZONES[timeZoneIndex].tz_name);
+    oldTimeZoneIndex = timeZoneIndex;
   }
-  return false;
+
+  unsigned int utcTime = time(NULL)-TIMEZONES[timeZoneIndex].tz_offset;
+  unsigned int quantized_time = utcTime/30;
+
+  //Assuming generating a code is expensive, only generate it if
+  //the time has changed or the key has changed.
+  if(quantized_time == lastQuantizedTimeGenerated && !keyChange)
+    return;
+
+  lastQuantizedTimeGenerated = quantized_time;
+
+  unsigned int code = generateCode(key, quantized_time);
+
+  if(lastCode != code) {
+    redraw(code);
+  }
 }
+
+void reload() {
+  static unsigned short oldKeyIndex = 255;
+  static char secretKey[33];
+  static char secretName[33];
+
+
+  //TODO: Refactor to not require fixed-width data.
+  if(keyIndex != oldKeyIndex) {
+    resource_load_byte_range(resource_get_handle(RESOURCE_ID_SECRET_KEY), 33*keyIndex, (uint8_t *)&secretKey, 32);
+    resource_load_byte_range(resource_get_handle(RESOURCE_ID_SECRET_NAME), 33*keyIndex, (uint8_t *)&secretName, 32);
+    oldKeyIndex = keyIndex;
+
+    text_layer_set_text(&currentKey, secretName);
+    recode(secretKey, true);
+  }
+  else
+    recode(secretKey, false);
+}
+
+
+
 
 // Modify these common button handlers
 
@@ -109,12 +103,11 @@ void up_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
   (void)recognizer;
   (void)window;
 
-  if(tz_offset < 12) {
-    tz_offset++;
-    recode();
-    redraw();
-  }
+  ++keyIndex;
+  if(keyIndex >= keyCount)
+    keyIndex = 0;
 
+  reload();
 }
 
 
@@ -122,19 +115,22 @@ void down_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
   (void)recognizer;
   (void)window;
 
-  if(tz_offset > -12) {
-    tz_offset--;
-    recode();
-    redraw();
-  }
+  if(keyIndex == 0)
+    keyIndex = keyCount;
+  --keyIndex;
+
+  reload();
 }
 
 void select_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
   (void)recognizer;
   (void)window;
 
-  if(recode())
-    redraw();
+  ++timeZoneIndex;
+  if(timeZoneIndex >= TIMEZONE_COUNT)
+    timeZoneIndex = 0;
+
+  reload();
 }
 
 // This usually won't need to be modified
@@ -152,34 +148,34 @@ void click_config_provider(ClickConfig **config, Window *window) {
 }
 
 
-// Standard app initialisation
+// Standard app init
 
 void handle_init(AppContextRef ctx) {
   (void)ctx;
   resource_init_current_app(&APP_RESOURCES);
 
-  uint8_t offset;
+  keyIndex = 0;
+  reload();
+
+  unsigned char offset = '0';
 
   resource_load_byte_range(resource_get_handle(RESOURCE_ID_GMT_OFFSET), 0, &offset, 1);
-  tz_offset = offset;
-  tz_offset -= '<';
-  resource_load_byte_range(resource_get_handle(RESOURCE_ID_SECRET_KEY), 0, (uint8_t *)&secretKey, 32);
+  timeZoneIndex = offset - '0';
 
-  for(uint8_t x=0; x < 32; x++) {
-    if(secretKey[x] == '\n') {
-      secretKey[x] = 0;
-      break;
-    }
-  }
-  secretKey[32] = 0;
-
-  window_init(&window, "Button App");
+  window_init(&window, "pTOTP");
   window_stack_push(&window, true /* Animated */);
 
-  text_layer_init(&textLayer, window.layer.frame);
-  text_layer_set_text(&textLayer, displayBuffer);
-  text_layer_set_font(&textLayer, fonts_get_system_font(FONT_KEY_GOTHAM_30_BLACK));
-  layer_add_child(&window.layer, &textLayer.layer);
+  text_layer_init(&currentKey, window.layer.frame);
+  text_layer_set_font(&currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+  layer_add_child(&window.layer, &currentKey.layer);
+
+  text_layer_init(&currentKey, window.layer.frame);
+  text_layer_set_font(&currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+  layer_add_child(&window.layer, &currentKey.layer);
+
+  text_layer_init(&currentKey, window.layer.frame);
+  text_layer_set_font(&currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+  layer_add_child(&window.layer, &currentKey.layer);
 
   // Attach our desired button functionality
   window_set_click_config_provider(&window, (ClickConfigProvider) click_config_provider);
@@ -189,17 +185,7 @@ void handle_tick(AppContextRef ctx, PebbleTickEvent *event) {
   (void)ctx;
   (void)event;
 
-  PblTm curr_time;
-  get_time(&curr_time);
-
-  unsigned int curTime = curr_time.tm_sec;
-  unsigned int nextTick = 30 - curTime % 30;
-  if(nextTick > lastTick) {
-    recode();
-  }
-  lastTick = nextTick;
-
-  redraw();
+  reload();
 }
 
 

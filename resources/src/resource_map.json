@@ -11,6 +11,16 @@
        "type":"raw",
        "defName":"SECRET_KEY",
        "file":"secret_key.txt"
+       },
+       {
+       "type":"raw",
+       "defName":"SECRET_NAME",
+       "file":"key_names.txt"
+       },
+       {
+       "type":"raw",
+       "defName":"SECRET_COUNT",
+       "file":"key_count.txt"
        }
       ]
 }
