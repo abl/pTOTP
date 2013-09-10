@@ -204,6 +204,7 @@ void handle_init(AppContextRef ctx) {
 
   unsigned char offset = '0';
   unsigned char rawDST = 'N';
+  unsigned char rawCount = '1';
 
   resource_load_byte_range(resource_get_handle(RESOURCE_ID_GMT_OFFSET), 0, &offset, 1);
 
@@ -212,6 +213,10 @@ void handle_init(AppContextRef ctx) {
   resource_load_byte_range(resource_get_handle(RESOURCE_ID_IS_DST), 0, &rawDST, 1);
 
   isDST = (rawDST == 'Y');
+
+  resource_load_byte_range(resource_get_handle(RESOURCE_ID_SECRET_COUNT), 0, &rawCount, 1);
+
+  keyCount = rawCount - '0';
   
   window_init(&window, "pTOTP");
   window_stack_push(&window, true /* Animated */);
