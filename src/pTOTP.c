@@ -27,18 +27,21 @@ PBL_APP_INFO(MY_UUID,
 
 Window window;
 
-TextLayer currentKey, currentCode, currentTime;
+TextLayer currentKey, currentCode, currentTime, currentOffset;
+
+Layer barLayer;
 
 unsigned short keyCount = 8;
 unsigned short keyIndex = 0;
 
 unsigned short timeZoneIndex = 0;
 
-void redraw(unsigned int code) {
-  static char codeDisplayBuffer[7] = "000000";
-  
+bool isDST = false;
+
+static char codeDisplayBuffer[7] = "000000";
+void redraw(unsigned int code) {  
   for(int x=0;x<6;x++) {
-    codeDisplayBuffer[6-x] = '0'+(code % 10);
+    codeDisplayBuffer[5-x] = '0'+(code % 10);
     code /= 10;
   }
 
@@ -46,19 +49,26 @@ void redraw(unsigned int code) {
 }
 
 
+bool freshCode = true;
+
 void recode(char *secretKey, bool keyChange) {
   static unsigned int lastCode = 0;
   static unsigned short oldTimeZoneIndex = 255;
   static unsigned int lastQuantizedTimeGenerated = 0;
+  static int offset;
+  static char offsetText[] = "-12:00";
 
   const char *key = secretKey;
 
   if(timeZoneIndex != oldTimeZoneIndex) {
-    text_layer_set_text(&currentTime, TIMEZONES[timeZoneIndex].tz_name);
+    text_layer_set_text(&currentTime, tz_names[timeZoneIndex]);
     oldTimeZoneIndex = timeZoneIndex;
+    offset = (tz_offsets[timeZoneIndex]+(isDST ? 3600 : 0))/60;
+    snprintf(offsetText, sizeof(offsetText), "%d:%.2d", offset/60, abs(offset%60));
+    text_layer_set_text(&currentOffset, offsetText);
   }
 
-  unsigned int utcTime = time(NULL)-TIMEZONES[timeZoneIndex].tz_offset;
+  unsigned int utcTime = time(NULL)-offset;
   unsigned int quantized_time = utcTime/30;
 
   //Assuming generating a code is expensive, only generate it if
@@ -72,6 +82,18 @@ void recode(char *secretKey, bool keyChange) {
 
   if(lastCode != code) {
     redraw(code);
+    freshCode = true;
+  }
+}
+
+//Technically not necessary but space-padding is much nicer.
+void strip(char *s, int len) {
+  while(len >= 0) {
+    if(s[len] == ' ' || s[len] == '\0')
+      s[len] = '\0';
+    else
+      break;
+    --len;
   }
 }
 
@@ -81,10 +103,12 @@ void reload() {
   static char secretName[33];
 
 
-  //TODO: Refactor to not require fixed-width data.
+  //TODO: Eventually refactor to not require fixed-width data.
   if(keyIndex != oldKeyIndex) {
     resource_load_byte_range(resource_get_handle(RESOURCE_ID_SECRET_KEY), 33*keyIndex, (uint8_t *)&secretKey, 32);
+    strip(secretKey, 32);
     resource_load_byte_range(resource_get_handle(RESOURCE_ID_SECRET_NAME), 33*keyIndex, (uint8_t *)&secretName, 32);
+    strip(secretName, 32);
     oldKeyIndex = keyIndex;
 
     text_layer_set_text(&currentKey, secretName);
@@ -93,8 +117,6 @@ void reload() {
   else
     recode(secretKey, false);
 }
-
-
 
 
 // Modify these common button handlers
@@ -131,6 +153,8 @@ void select_single_click_handler(ClickRecognizerRef recognizer, Window *window) 
     timeZoneIndex = 0;
 
   reload();
+
+  //TODO
 }
 
 // This usually won't need to be modified
@@ -147,6 +171,28 @@ void click_config_provider(ClickConfig **config, Window *window) {
   config[BUTTON_ID_DOWN]->click.repeat_interval_ms = 100;
 }
 
+void bar_layer_update(Layer *l, GContext* ctx) {
+  //static int offset, tick;
+  //GSize sz;
+  if(freshCode) {
+    /*
+    sz = graphics_text_layout_get_max_used_size(ctx, codeDisplayBuffer, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS),
+                                                   GRect(0,32,144,36), GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft,
+                                                   NULL);
+
+    offset = (144-30*(sz.w/30))/2;
+    tick = sz.w/30;
+
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "W: %d, H:%d, O: %d, T: %d", sz.w, sz.h, offset, tick);
+    */
+    //TODO: graphics_text_layout_get_max_used_size is generating complete garbage.
+    freshCode = false;
+  }
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  unsigned short slice = 30-(time(NULL)%30);
+  graphics_fill_rect(ctx, GRect(12,0,slice*4,5), 0, GCornerNone);
+}
+
 
 // Standard app init
 
@@ -155,37 +201,61 @@ void handle_init(AppContextRef ctx) {
   resource_init_current_app(&APP_RESOURCES);
 
   keyIndex = 0;
-  reload();
 
   unsigned char offset = '0';
+  unsigned char rawDST = 'N';
 
   resource_load_byte_range(resource_get_handle(RESOURCE_ID_GMT_OFFSET), 0, &offset, 1);
+
   timeZoneIndex = offset - '0';
 
+  resource_load_byte_range(resource_get_handle(RESOURCE_ID_IS_DST), 0, &rawDST, 1);
+
+  isDST = (rawDST == 'Y');
+  
   window_init(&window, "pTOTP");
   window_stack_push(&window, true /* Animated */);
 
-  text_layer_init(&currentKey, window.layer.frame);
-  text_layer_set_font(&currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_14));
+  //Great for debugging the layout.
+  //window_set_background_color(&window, GColorBlack);
+
+  layer_init(&barLayer, GRect(0,70,window.layer.frame.size.w,5));
+  barLayer.update_proc = &bar_layer_update;
+  layer_add_child(&window.layer, &barLayer);
+
+  text_layer_init(&currentKey, GRect(0,0,window.layer.frame.size.w,22));
+  text_layer_set_font(&currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  text_layer_set_text_alignment(&currentKey, GTextAlignmentCenter);
   layer_add_child(&window.layer, &currentKey.layer);
 
-  text_layer_init(&currentKey, window.layer.frame);
-  text_layer_set_font(&currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  layer_add_child(&window.layer, &currentKey.layer);
+  text_layer_init(&currentCode, GRect(0,32,window.layer.frame.size.w,36));
+  text_layer_set_font(&currentCode, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
+  text_layer_set_text_alignment(&currentCode, GTextAlignmentCenter);
+  layer_add_child(&window.layer, &currentCode.layer);
 
-  text_layer_init(&currentKey, window.layer.frame);
-  text_layer_set_font(&currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  layer_add_child(&window.layer, &currentKey.layer);
+  text_layer_init(&currentTime, GRect(0,window.layer.frame.size.h-(15+22),(window.layer.frame.size.w/4)*3,22));
+  text_layer_set_font(&currentTime, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  text_layer_set_text_alignment(&currentTime, GTextAlignmentLeft);
+  layer_add_child(&window.layer, &currentTime.layer);
+
+  text_layer_init(&currentOffset, GRect((window.layer.frame.size.w/4)*3,window.layer.frame.size.h-(15+22),window.layer.frame.size.w/4,22));
+  text_layer_set_font(&currentOffset, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  text_layer_set_text_alignment(&currentOffset, GTextAlignmentRight);
+  layer_add_child(&window.layer, &currentOffset.layer);
 
   // Attach our desired button functionality
   window_set_click_config_provider(&window, (ClickConfigProvider) click_config_provider);
+
+  reload();
 }
 
 void handle_tick(AppContextRef ctx, PebbleTickEvent *event) {
-  (void)ctx;
-  (void)event;
+  //(void)ctx;
+  //(void)event;
 
   reload();
+  layer_mark_dirty(&barLayer);
+
 }
 
 

@@ -21,6 +21,11 @@
        "type":"raw",
        "defName":"SECRET_COUNT",
        "file":"key_count.txt"
+       },
+       {
+       "type":"raw",
+       "defName":"IS_DST",
+       "file":"is_dst.bin"
        }
       ]
 }

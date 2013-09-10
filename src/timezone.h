@@ -11,4 +11,7 @@ typedef struct {
 
 extern TimeZone TIMEZONES[TIMEZONE_COUNT];
 
+extern char* tz_names[];
+extern int tz_offsets[];
+
 #endif
