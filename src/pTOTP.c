@@ -63,12 +63,13 @@ void recode(char *secretKey, bool keyChange) {
   if(timeZoneIndex != oldTimeZoneIndex) {
     text_layer_set_text(&currentTime, tz_names[timeZoneIndex]);
     oldTimeZoneIndex = timeZoneIndex;
-    offset = (tz_offsets[timeZoneIndex]+(isDST ? 3600 : 0))/60;
-    snprintf(offsetText, sizeof(offsetText), "%d:%.2d", offset/60, abs(offset%60));
+    offset = (tz_offsets[timeZoneIndex]+(isDST ? 3600 : 0));
+    snprintf(offsetText, sizeof(offsetText), "%d:%.2d", offset/(60*60), abs((offset/60)%60));
     text_layer_set_text(&currentOffset, offsetText);
   }
 
-  unsigned int utcTime = time(NULL)-offset;
+  unsigned long utcTime = time(NULL)-offset;
+
   unsigned int quantized_time = utcTime/30;
 
   //Assuming generating a code is expensive, only generate it if
@@ -238,12 +239,12 @@ void handle_init(AppContextRef ctx) {
   text_layer_set_text_alignment(&currentCode, GTextAlignmentCenter);
   layer_add_child(&window.layer, &currentCode.layer);
 
-  text_layer_init(&currentTime, GRect(0,window.layer.frame.size.h-(15+22),(window.layer.frame.size.w/4)*3,22));
+  text_layer_init(&currentTime, GRect(0,window.layer.frame.size.h-(15+22),(window.layer.frame.size.w/3)*2,22));
   text_layer_set_font(&currentTime, fonts_get_system_font(FONT_KEY_GOTHIC_18));
   text_layer_set_text_alignment(&currentTime, GTextAlignmentLeft);
   layer_add_child(&window.layer, &currentTime.layer);
 
-  text_layer_init(&currentOffset, GRect((window.layer.frame.size.w/4)*3,window.layer.frame.size.h-(15+22),window.layer.frame.size.w/4,22));
+  text_layer_init(&currentOffset, GRect((window.layer.frame.size.w/3)*2,window.layer.frame.size.h-(15+22),window.layer.frame.size.w/3,22));
   text_layer_set_font(&currentOffset, fonts_get_system_font(FONT_KEY_GOTHIC_18));
   text_layer_set_text_alignment(&currentOffset, GTextAlignmentRight);
   layer_add_child(&window.layer, &currentOffset.layer);
