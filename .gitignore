@@ -1,0 +1,10 @@
+wscript
+.waf*
+.lock-waf*
+build
+tools
+waf
+include
+lib
+pebble_app.ld
+

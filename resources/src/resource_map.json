@@ -1,11 +1,16 @@
 
 {"friendlyVersion": "VERSION",
- "versionDefName": "VERSION",
+ "versionDefName": "APP_RESOURCES",
  "media": [
-	   {
-	    "type":"raw",
-	    "defName":"DUMMY",
-	    "file":"resource_map.json"
-	   }
-	  ]
+       {
+        "type":"raw",
+        "defName":"GMT_OFFSET",
+        "file":"gmt_offset.bin"
+       },
+       {
+       "type":"raw",
+       "defName":"SECRET_KEY",
+       "file":"secret_key.txt"
+       }
+      ]
 }

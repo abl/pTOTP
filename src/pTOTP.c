@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "config.h"
-
 #include "pebble_os.h"
 #include "pebble_app.h"
 #include "pebble_fonts.h"
@@ -37,7 +35,8 @@ unsigned int lastTick;
 //                                 1           2
 //                      01234556789012234567899012233
 char displayBuffer[] = "TOTPb\n000000\nGMT-12\n30\n\0";
-int tz_offset = OFFSET;
+int tz_offset;
+static char secretKey[33];
 
 void redraw() {
   int code = oldCode;
@@ -50,8 +49,8 @@ void redraw() {
     displayBuffer[10] = ' ';
     displayBuffer[11] = ' ';
 
-    displayBuffer[20] = ' ';
-    displayBuffer[21] = ' ';
+    //displayBuffer[20] = ' ';
+    //displayBuffer[21] = ' ';
   }
   else {
     for(int x=0;x<6;x++) {
@@ -138,22 +137,12 @@ void select_single_click_handler(ClickRecognizerRef recognizer, Window *window) 
     redraw();
 }
 
-
-void select_long_click_handler(ClickRecognizerRef recognizer, Window *window) {
-  (void)recognizer;
-  (void)window;
-
-}
-
-
 // This usually won't need to be modified
 
 void click_config_provider(ClickConfig **config, Window *window) {
   (void)window;
 
   config[BUTTON_ID_SELECT]->click.handler = (ClickHandler) select_single_click_handler;
-
-  config[BUTTON_ID_SELECT]->long_click.handler = (ClickHandler) select_long_click_handler;
 
   config[BUTTON_ID_UP]->click.handler = (ClickHandler) up_single_click_handler;
   config[BUTTON_ID_UP]->click.repeat_interval_ms = 100;
@@ -167,12 +156,28 @@ void click_config_provider(ClickConfig **config, Window *window) {
 
 void handle_init(AppContextRef ctx) {
   (void)ctx;
+  resource_init_current_app(&APP_RESOURCES);
+
+  uint8_t offset;
+
+  resource_load_byte_range(resource_get_handle(RESOURCE_ID_GMT_OFFSET), 0, &offset, 1);
+  tz_offset = offset;
+  tz_offset -= '<';
+  resource_load_byte_range(resource_get_handle(RESOURCE_ID_SECRET_KEY), 0, (uint8_t *)&secretKey, 32);
+
+  for(uint8_t x=0; x < 32; x++) {
+    if(secretKey[x] == '\n') {
+      secretKey[x] = 0;
+      break;
+    }
+  }
+  secretKey[32] = 0;
 
   window_init(&window, "Button App");
   window_stack_push(&window, true /* Animated */);
 
   text_layer_init(&textLayer, window.layer.frame);
-  text_layer_set_text(&textLayer, "Hello World");
+  text_layer_set_text(&textLayer, displayBuffer);
   text_layer_set_font(&textLayer, fonts_get_system_font(FONT_KEY_GOTHAM_30_BLACK));
   layer_add_child(&window.layer, &textLayer.layer);
 
@@ -184,13 +189,15 @@ void handle_tick(AppContextRef ctx, PebbleTickEvent *event) {
   (void)ctx;
   (void)event;
 
-  unsigned int curTime = get_unix_time(0);
-  lastTick = 30 - curTime % 30;
-  curTime /= 30;
+  PblTm curr_time;
+  get_time(&curr_time);
 
-  if(genTime != curTime) {
-    oldCode = -1;
+  unsigned int curTime = curr_time.tm_sec;
+  unsigned int nextTick = 30 - curTime % 30;
+  if(nextTick > lastTick) {
+    recode();
   }
+  lastTick = nextTick;
 
   redraw();
 }
