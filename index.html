@@ -1,0 +1,566 @@
+<!doctype html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>pTOTP: brought to you by empebble</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+        <link rel="stylesheet" href="styles/00e63a9b.main.css">
+        <script src="scripts/vendor/f7f27360.modernizr.js"></script>
+    </head>
+    <body>
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="brand" href="#">pTOTP</a>
+                    <div class="nav-collapse collapse">
+                    </div><!--/.nav-collapse -->
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="page-header">
+              <h1>Pebble OTP Generator <small>brought to you by empebble and a long flight delay</small></h1>
+            </div>
+
+
+            <div class="row">
+                <form id="buildForm">
+                    <fieldset>
+                        <div>
+                            <div class="row">
+                                <div class="span2">
+                                    Type
+                                </div>
+                                <div class="span5">
+                                    Key Name
+                                </div>
+                                <div class="span5">
+                                    Key Secret (Base32)
+                                </div>
+                            </div>
+                        </div>
+                        <br>
+
+                        <div id="secret_keys">
+                        </div>
+
+                        <div class="control-group form-horizontal">
+                            <label class="control-label" for="timezone">Timezone</label>
+                            <div class="controls">
+                                <select class="span4" name="timezone" id="timezone">
+                                    <option value="0">(GMT -12:00) Eniwetok, Kwajalein</option>
+                                    <option value="1">(GMT -11:00) Midway Island, Samoa</option>
+                                    <option value="2">(GMT -10:00) Hawaii</option>
+                                    <option value="3">(GMT -9:00) Alaska</option>
+                                    <option value="4" selected="selected">(GMT -8:00) Pacific Time (US &amp; Canada)</option>
+                                    <option value="5">(GMT -7:00) Mountain Time (US &amp; Canada)</option>
+                                    <option value="6">(GMT -6:00) Central Time (US &amp; Canada), Mexico City</option>
+                                    <option value="7">(GMT -5:00) Eastern Time (US &amp; Canada), Bogota, Lima</option>
+                                    <option value="8">(GMT -4:00) Atlantic Time (Canada), Caracas, La Paz</option>
+                                    <option value="I">(GMT -3:30) Newfoundland</option>
+                                    <option value="9">(GMT -3:00) Brazil, Buenos Aires, Georgetown</option>
+                                    <option value=":">(GMT -2:00) Mid-Atlantic</option>
+                                    <option value=";">(GMT -1:00 hour) Azores, Cape Verde Islands</option>
+                                    <option value="<">(GMT) Western Europe Time, London, Lisbon, Casablanca</option>
+                                    <option value="=">(GMT +1:00 hour) Brussels, Copenhagen, Madrid, Paris</option>
+                                    <option value=">">(GMT +2:00) Kaliningrad, South Africa</option>
+                                    <option value="?">(GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg</option>
+                                    <option value="J">(GMT +3:30) Tehran</option>
+                                    <option value="@">(GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi</option>
+                                    <option value="K">(GMT +4:30) Kabul</option>
+                                    <option value="A">(GMT +5:00) Ekaterinburg, Islamabad, Karachi, Tashkent</option>
+                                    <option value="L">(GMT +5:30) Bombay, Calcutta, Madras, New Delhi</option>
+                                    <option value="M">(GMT +5:45) Kathmandu</option>
+                                    <option value="B">(GMT +6:00) Almaty, Dhaka, Colombo</option>
+                                    <option value="C">(GMT +7:00) Bangkok, Hanoi, Jakarta</option>
+                                    <option value="D">(GMT +8:00) Beijing, Perth, Singapore, Hong Kong</option>
+                                    <option value="E">(GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk</option>
+                                    <option value="N">(GMT +9:30) Adelaide, Darwin</option>
+                                    <option value="F">(GMT +10:00) Eastern Australia, Guam, Vladivostok</option>
+                                    <option value="G">(GMT +11:00) Magadan, Solomon Islands, New Caledonia</option>
+                                    <option value="H">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
+                                </select>
+                                <span class="help-inline">Pressing select in the app will cycle through timezones.</span>
+                            </div>
+                        </div>
+
+                        <div class="control-group form-horizontal">
+                            <label class="control-label" for="daylight_savings"><large>Daylight Savings Time?</large></label>
+                            <div class="controls">
+                                <label class="checkbox">
+                                    <input id="daylight_savings" name="daylight_savings" type="checkbox" value="true">
+                                    If you're currently experiencing daylight savings, check this box.
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="control-group form-horizontal">
+                            <div class="controls">
+                                <submit id="buildButton" type="button" class="btn btn-disabled">Loading...</submit>
+                                <a href="#" id="downloadLink" style="display: none">2. Download your custom face</a>
+                            </div>
+                        </div>
+                    </fieldset>
+                </form>
+            </div>
+
+
+            <div class="row">
+                <div class="span3">
+                    <h2>What is this?</h2>
+                    <p>This page will download a generic OTP watchapp, unpack it, add your key and time zone, repack it, and send it to you.</p>
+                </div>
+                <div class="span3">
+                    <h2>Why did you do this?</h2>
+                    <p>It's part of a problem I had to solve for <a href="http://github.com/aleksandyr/empebble">empebble</a> - it's the second no-compiler-involved watchface customizer. (The first one wasn't as good, so I scrapped it.) Your secret key <b>does not</b> leave your machine. This can probably be applied to other, more useful, tools.</p>
+                </div>
+                <div class="span3">
+                    <h2>Why is this secure?</h2>
+                    <p>All of the magic happens in your browser - my server just provides this static page and the generic OTP watchapp. The key isn't sent over the network in any form - the PBW you'll "download" is being created on-the-fly by your browser using <a href="http://stuk.github.io/jszip/">JSZip</a>. Once the page finishes loading (and the Build button turns blue) unplug your network cable, turn off your WiFi, enter your data and build. It will work just fine.</p>
+                </div>
+                <div class="span3">
+                    <h2>Why is there no QR code?</h2>
+                    <p>QR codes can't hold entire apps, just URLs. If there was a URL you could download your customized OTP app from it would mean that your OTP app was being hosted somewhere and possibly intercepted by a third party (or saved by the service provider for nefarious purposes.)</p>
+                    <p>Note that this should work <a href="http://caniuse.com/bloburls">just fine</a> on Mobile Safari.</p>
+                </div>
+            </div>
+
+        </div> <!-- /container -->
+
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+
+        <script>
+            /*
+            var _gaq=[['_setAccount','UA-XXXXX-X'],['_trackPageview']];
+            (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
+            g.src='//www.google-analytics.com/ga.js';
+            s.parentNode.insertBefore(g,s)}(document,'script'));
+            */
+        </script>
+
+        <script src="scripts/0e7b07b4.main.js"></script>
+
+        <script src="scripts/76c21dca.plugins.js"></script>
+
+        <script id="secret_key_template" type="text/x-handlebars-template">
+            <div class="secret_group row">
+                <div class="control-group span2">
+<!--                    <label class="control-label" for="secret_format_{{{index}}}"><large>Secret Format {{{index}}}</large></label> -->
+                    <div class="controls expand">
+                        <select class="secret_format expand" name="secret_format_{{{index}}}" id="secret_format_{{{index}}}">
+                            <option value="google">Google</option>
+                            <option value="blizzard" disabled="true">Blizzard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-group span5">
+<!--                    <label class="control-label" for="secret_name_{{{index}}}"><large>Secret Name {{{index}}}</large></label> -->
+                    <div class="controls expand">
+                        <input class="secret_name expand" name="secret_name_{{{index}}}" id="secret_name_{{{index}}}" type="text" placeholder="e.x. Google Mail">
+                    </div>
+                </div>
+
+                <div class="control-group span5">
+<!--                    <label class="control-label" for="secret_key_{{{index}}}"><large>Secret Key {{{index}}}</large></label> -->
+                    <div class="controls expand">
+                        <input class="secret_key expand" name="secret_key_{{{index}}}" id="secret_key_{{{index}}}" type="text" placeholder="e.x. LUDNVCE536YNCDV3">
+                    </div>
+                </div>
+
+            </div>
+        </script>
+
+        <script>
+            "use strict";
+            /* jshint devel:true */
+            /* global JSZip, Handlebars */
+
+            (function() {
+                var source   = $("#secret_key_template").html();
+                var template = Handlebars.compile(source);
+                var container = $("#secret_keys");
+                for(var x=1;x<=8;++x)
+                    container.append(template({index: x}));
+                console.log("Keys added");
+            })();
+
+
+            function _stm_crc32(crc, data) {
+                // >>> 0 unsigns a signed integer. There is no equivalent for <<.
+
+                if (data.charCodeAt) {
+                    var original = data;
+                    data = new Uint8Array(original.length);
+                    for (var k=0; k<data.length; ++k) {
+                        data[k] = original.charCodeAt(k);
+                    }
+                }
+
+                var acc = 0, j;
+
+                if (data.length < 4) {
+                    for (j=0; j<data.length; ++j) {
+                        acc = ((acc << 8) >>> 0) | data[j];
+                    }
+                } else {
+                    for (j=3; j>=0; --j) {
+                        acc = ((acc << 8) >>> 0) | data[j];
+                    }
+                }
+
+                crc = crc ^ acc;
+
+                for (var i = 0; i < 32; i++) {
+                    if (crc & 0x80000000) {
+                        crc = (((crc << 1) >>> 0) ^ 0x04C11DB7) >>> 0;
+                    } else {
+                        crc = (crc << 1) >>> 0;
+                    }
+                }
+
+                return crc;
+            }
+
+            function crc32(s) {
+                var crc = 0xFFFFFFFF;
+
+                for (var i = 0; i < s.length; i += 4) {
+                    crc = _stm_crc32(crc, s.substring(i,i+4));
+                }
+
+                return crc;
+            }
+
+            function crc32_a(s) {
+                var crc = 0xFFFFFFFF;
+
+                for (var i = 0; i < s.length; i += 4) {
+                    var b = [];
+                    for (var j = 0; j < 4; ++j) {
+                        if(i+j < s.length) {
+                            b.push(s[i+j]);
+                        }
+                    }
+
+                    crc = _stm_crc32(crc, b);
+                }
+
+                return crc;
+            }
+
+            /* WIP
+
+            // Heavily inspired by Pythonic structures.
+
+            function Struct(binary, offset, little_endian) {
+                this.binary = binary;
+                this.little_endian = typeof little_endian !== 'undefined' ? little_endian : true;
+                this.offset = typeof offset !== 'undefined' ? offset : 0;
+            }
+
+            Struct.prototype.readByte = function() {
+                var v = this.binary[this.offset] >>> 0;
+                this.offset++;
+                return v;
+            };
+
+            Struct.prototype._readUIntWithSize = function(size) {
+                var acc = 0, j;
+                if(this.little_endian) {
+                    for (j=size; j>=0; --j) {
+                            acc = ((acc << 8) >>> 0) | this.binary[j+this.offset];
+                    }
+                } else {
+                    for (j=0; j<size; ++j) {
+                            acc = ((acc << 8) >>> 0) | this.binary[j+this.offset];
+                    }
+                }
+                this.offset += size;
+                return acc;
+            };
+
+            Struct.prototype.readUInt16 = function() {
+                return this._readUIntWithSize(2);
+            };
+
+            Struct.prototype.readUInt32 = function() {
+                return this._readUIntWithSize(4);
+            };
+
+            Struct.prototype.readStringWithLength = function(length) {
+                var acc = "";
+                for(var j=0; j < length; ++j) {
+                    acc += String.fromCharCode(this.binary[j+this.offset]);
+                }
+                this.offset += length;
+                return acc;
+            };
+
+            function PebblePack(pbpack) {
+                this._struct = new Struct(pbpack, 0, true);
+
+                this.resourceCount = this._struct.readUInt32();
+                this.crc = this._struct.readUInt32();
+                this.timestamp = this._struct.readUInt32();
+                this.name = this._struct.readStringWithLength(16);
+
+                console.log(this.resourceCount, this.crc, this.timestamp, this.name);
+            }
+
+            */
+
+            /* jshint browser:true */
+            var pebbleapp;
+            var xhr = new XMLHttpRequest();
+            var baseData;
+            xhr.open('GET', 'pTOTP-base.pbw', true);
+            if (xhr.overrideMimeType) {
+                xhr.overrideMimeType('text/plain; charset=x-user-defined');
+            }
+
+
+            var metrics = [
+                [ '.secret_key', 'between:16:32', 'Between 16 and 32 characters' ],
+                [ '.secret_key', /^[a-zA-Z2-7 ]*$/, 'Only A-Z and 2-7'],
+                [ '.secret_name', 'max-length:32', '32 characters or less']
+            ];
+
+            var options = {
+              'delay' : 50,
+              'submitBtnSelector' : '#buildButton',
+              'silentSubmit' : true
+            };
+             
+            $( "#buildForm" ).nod( metrics, options );
+
+            $(".secret_key").keydown(function (e) {
+            if (e.keyCode == 32) {
+                return false;
+                }
+            }).change(function (e) {
+                $(this).val(function (i, v) { return v.replace(/ /g, ""); }); 
+            });
+
+            var today = new Date();
+
+            //This is completely ridiculous.
+            var jan = new Date(today.getFullYear(), 0, 1).getTimezoneOffset();
+            var jun = new Date(today.getFullYear(), 6, 1).getTimezoneOffset();
+            var today = today.getTimezoneOffset();
+
+            if(jan == jun) {
+                $('#daylight_savings').prop('checked', false);
+            } else if(jan > jun) {
+                //Northern hemisphere
+                $('#daylight_savings').prop('checked', (jun==today));
+            } else { //jun < jan
+                //Southern hemisphere
+                $('#daylight_savings').prop('checked', (jan==today));
+            }
+    
+
+            var resources;
+
+            //TODO: This somewhat duplicates the validation in nod.
+            function normalizeKey(key) {
+                if(key.length != 3) {
+                    console.log("Key did not have 3 elements");
+                    return null;
+                }
+                var type = key[0];
+                var name = key[1];
+                var secret = key[2].replace(" ", "");
+
+                if(name.length > 32) {
+                    console.log("Name was longer than 32 characters");
+                    return null;
+                }
+                if(secret.length != 16 && secret.length != 32) {
+                    console.log("Secret was not 16 or 32 characters long");
+                    return null;
+                }
+                if(!secret.match(/^[a-zA-Z2-7]+$/)) {
+                    console.log("Secret is not valid Base32");
+                    return null;
+                }
+
+
+                while(name.length < 32)
+                    name += " "; //TODO: Non-optimal
+
+                secret = secret.toUpperCase();
+                while(secret.length < 32)
+                    secret += " "; //TODO: Non-optimal
+
+                return {type:type, name:name, secret:secret};
+            }
+
+            var keyCount, keyBlock, nameBlock, timezone, isDST, resources, pebbleapp, zip;
+
+            var buildCustom = function ( event, data ) {
+                    console.log("Building...");
+
+                    var keys = [];
+                    var raw = [];
+
+                    $('.secret_group').each(
+                        function(j, g) {
+                            var k =
+                                $(g).children().children().children().map(
+                                    function(i,e){ 
+                                        if($(e).val() != "") {
+                                            return $(e).val()
+                                        }
+                                    }
+                                );
+                            var n = normalizeKey(k);
+                            if(n != null) {
+                                keys.push(n);
+                            }
+                        }
+                    );
+
+                    keyCount = keys.length.toString();
+
+                    console.log("Discovered " + keys.length + " valid keys");
+
+                    while(keys.length < 8) { //Target key count
+                        keys.push({
+                            type  : "empty",
+                            name  : "                                ",
+                            secret: "                                "
+                        });
+                    }
+
+                    keyBlock = "";
+
+                    for(var i=0; i < 8; i++) {
+                        keyBlock += keys[i].secret + "\n";
+                    }
+
+                    keyBlock = keyBlock.slice(0,-1); //TODO: Refactor to join
+
+                    nameBlock = "";
+
+                    for(var i=0; i < 8; i++) {
+                        nameBlock += keys[i].name + "\n";
+                    }
+
+                    nameBlock = nameBlock.slice(0,-1);
+
+                    timezone = $("#timezone").val() + "\n";
+
+                    isDST = ($("#daylight_savings").is(":checked") ? 'Y' : 'N');
+
+                    var manifest = JSON.parse(zip.file("manifest.json").asText());
+
+                    // in app_resources.pbpack...
+                    // 40-43 = crc of time zone (little endian)
+                    // 56-59 = crc of secret key (little endian)
+                    // 72-75 = crc of names
+                    // 88-91 = crc of count
+                    // 104-107 = crc of DST
+                    // 4124-4125 = time zone + \n
+                    // 4126 = secret key block
+                    // 4389 = key name block
+                    // 4652 = key count
+                    // 4653 = isDST
+                    // We'll move this over to more elegant parsing in the future.
+                    // Take a look at the future branch for some steps towards that.
+
+                    function replace32(array, offset, val, name) {
+                        var old = ((array[offset + 3] & 0xFF) << 24) >>> 0 |
+                                  ((array[offset + 2] & 0xFF) << 16) >>> 0 |
+                                  ((array[offset + 1] & 0xFF) << 8) >>> 0  |
+                                  ((array[offset + 0] & 0xFF) << 0) >>> 0;
+                        old = old >>> 0;
+
+                        console.log("Old "+name+" CRC: " + old.toString(16));
+
+                        array[offset + 3] = (val >>> 24) & 0xFF;
+                        array[offset + 2] = (val >>> 16) & 0xFF;
+                        array[offset + 1] = (val >>> 8)  & 0xFF;
+                        array[offset + 0] = (val >>> 0)  & 0xFF;
+
+                        console.log("New "+name+" CRC: " + val.toString(16));
+
+                    }
+
+                    function replaceResource(header, offset, val, name) {
+                        var identical = true;
+                        for(var x=0;x<val.length;x++) {
+                            var left = resources[offset+x];
+                            var right = val[x].charCodeAt(0);
+                            if(left != right) identical = false;
+                            resources[offset+x] = val[x].charCodeAt(0);
+                        }
+
+                        console.log("Identical replacement for " + name);
+
+                        var crc = crc32(val);
+                        replace32(resources, header, crc, name);
+                    }
+
+                    replaceResource(40, 4124, timezone, "timezone");
+                    replaceResource(56, 4126, keyBlock, "secret keys");
+                    replaceResource(72, 4389, nameBlock, "key names");
+                    replaceResource(88, 4652, keyCount, "key count");
+                    replaceResource(104, 4653, isDST, "DST");
+
+                    var resource_crc = crc32_a(resources.subarray(4124));
+
+                    replace32(resources, 4, resource_crc, "master resource");
+
+                    replace32(pebbleapp, 124, resource_crc, "app resources");
+
+                    manifest['resources']['crc'] = crc32_a(resources);
+
+                    // 124 is the length of the header.
+                    // 3896 is where the reloc table begins.
+                    // In the future we'll follow the table to get these.
+                    replace32(pebbleapp, 20, crc32_a(pebbleapp.subarray(124,3896)), "master app")
+
+                    zip.file("app_resources.pbpack", resources);
+                    zip.file("manifest.json", JSON.stringify(manifest));
+                    zip.file("pebble-app.bin", pebbleapp);
+
+                    var blob = zip.generate({type:"blob"});
+                    var downloadLink = document.getElementById("downloadLink");
+                    downloadLink.href = window.URL.createObjectURL(blob);
+                    downloadLink.download = "pTOTP-"+resource_crc+".pbw";
+                    downloadLink.style.display = "inline";
+
+            };
+
+            xhr.onreadystatechange = function(e) {
+                if (this.readyState == 4 && this.status == 200) {
+                  baseData = this.responseText;
+                  zip = new JSZip(baseData);
+                  resources = zip.file("app_resources.pbpack").asUint8Array();
+                  pebbleapp = zip.file("pebble-app.bin").asUint8Array();
+
+
+                  $("#buildButton").addClass("btn-primary").text("1. Build it!");
+                  $("#buildForm").on( 'silentSubmit', buildCustom);
+              }
+          };
+
+          xhr.send();
+        </script>
+</body>
+</html>
