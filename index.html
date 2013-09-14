@@ -394,10 +394,6 @@
                     console.log("Secret was not between 16 and 32 characters long");
                     return null;
                 }
-                if(secret.length % 4 != 0) {
-                    console.log("Secret was not of a length divisible by 4");
-                    return null;
-                }
                 if(!secret.match(/^[a-zA-Z2-7]+$/)) {
                     console.log("Secret is not valid Base32");
                     return null;
