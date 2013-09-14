@@ -390,8 +390,12 @@
                     console.log("Name was longer than 32 characters");
                     return null;
                 }
-                if(secret.length != 16 && secret.length != 32) {
-                    console.log("Secret was not 16 or 32 characters long");
+                if(secret.length < 16 && secret.length > 32) {
+                    console.log("Secret was not between 16 and 32 characters long");
+                    return null;
+                }
+                if(secret.length % 4 != 0) {
+                    console.log("Secret was not of a length divisible by 4");
                     return null;
                 }
                 if(!secret.match(/^[a-zA-Z2-7]+$/)) {
