@@ -38,17 +38,27 @@
 
 
             <div class="row">
-                <form id="buildForm" class="form-horizontal">
+                <form id="buildForm">
                     <fieldset>
-                        <div class="control-group">
-                            <label class="control-label" for="secret_key"><large>Secret Key</large></label>
-                            <div class="controls">
-                                <input class="span4" name="secret_key" id="secret_key" type="text" placeholder="e.x. LUDNVCE536YNCDV3">
-                                <span class="help-inline">Base32-encoded.</span>
+                        <div>
+                            <div class="row">
+                                <div class="span2">
+                                    Type
+                                </div>
+                                <div class="span5">
+                                    Key Name
+                                </div>
+                                <div class="span5">
+                                    Key Secret (Base32)
+                                </div>
                             </div>
                         </div>
+                        <br/>
 
-                        <div class="control-group">
+                        <div id="secret_keys">
+                        </div>
+
+                        <div class="control-group form-horizontal">
                             <label class="control-label" for="timezone">Timezone</label>
                             <div class="controls">
                                 <select class="span4" name="timezone" id="timezone">
@@ -84,21 +94,21 @@
                                     <option value="G">(GMT +11:00) Magadan, Solomon Islands, New Caledonia</option>
                                     <option value="H">(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka</option>
                                 </select>
-                                <span class="help-inline">Up/down will change this in the app. Daylight Savings Time not supported yet.</span>
+                                <span class="help-inline">Pressing select in the app will cycle through timezones.</span>
                             </div>
                         </div>
 
-                        <div class="control-group">
+                        <div class="control-group form-horizontal">
                             <label class="control-label" for="daylight_savings"><large>Daylight Savings Time?</large></label>
                             <div class="controls">
                                 <label class="checkbox">
-                                    <input id="daylight_savings" name="daylight_savings" type="checkbox" value="true" checked>
+                                    <input id="daylight_savings" name="daylight_savings" type="checkbox" value="true">
                                     If you're currently experiencing daylight savings, check this box.
                                 </label>
                             </div>
                         </div>
 
-                        <div class="control-group">
+                        <div class="control-group form-horizontal">
                             <div class="controls">
                                 <submit id="buildButton" type="button" class="btn btn-disabled">Loading...</submit>
                                 <a href="#" id="downloadLink" style="display: none">2. Download your custom face</a>
@@ -151,6 +161,7 @@
         <script src="bower_components/jszip/jszip-load.js"></script>
         <script src="bower_components/jszip/jszip-inflate.js"></script>
         <script src="bower_components/jszip/jszip-deflate.js"></script>
+        <script src="bower_components/handlebars/handlebars.js"></script>
         <!-- endbuild -->
 
         <!-- build:js scripts/plugins.js -->
@@ -169,10 +180,50 @@
         <script src="bower_components/sass-bootstrap/js/bootstrap-tab.js"></script>
         <!-- endbuild -->
 
+        <script id="secret_key_template" type="text/x-handlebars-template">
+            <div class="secret_group row">
+                <div class="control-group span2">
+<!--                    <label class="control-label" for="secret_format_{{{index}}}"><large>Secret Format {{{index}}}</large></label> -->
+                    <div class="controls expand">
+                        <select class="secret_format expand" name="secret_format_{{{index}}}" id="secret_format_{{{index}}}">
+                            <option value="google">Google</option>
+                            <option value="blizzard" disabled="true">Blizzard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-group span5">
+<!--                    <label class="control-label" for="secret_name_{{{index}}}"><large>Secret Name {{{index}}}</large></label> -->
+                    <div class="controls expand">
+                        <input class="secret_name expand" name="secret_name_{{{index}}}" id="secret_name_{{{index}}}" type="text" placeholder="e.x. Google Mail">
+                    </div>
+                </div>
+
+                <div class="control-group span5">
+<!--                    <label class="control-label" for="secret_key_{{{index}}}"><large>Secret Key {{{index}}}</large></label> -->
+                    <div class="controls expand">
+                        <input class="secret_key expand" name="secret_key_{{{index}}}" id="secret_key_{{{index}}}" type="text" placeholder="e.x. LUDNVCE536YNCDV3">
+                    </div>
+                </div>
+
+            </div>
+        </script>
+
         <script>
             "use strict";
             /* jshint devel:true */
-            /* global JSZip */
+            /* global JSZip, Handlebars */
+
+            (function() {
+                var source   = $("#secret_key_template").html();
+                var template = Handlebars.compile(source);
+                var container = $("#secret_keys");
+                for(var x=1;x<=8;++x)
+                    container.append(template({index: x}));
+                console.log("Keys added");
+            })();
+
+
             function _stm_crc32(crc, data) {
                 // >>> 0 unsigns a signed integer. There is no equivalent for <<.
 
@@ -308,9 +359,9 @@
 
 
             var metrics = [
-                [ '#secret_key', 'presence', 'Cannot be empty.'],
-                [ '#secret_key', 'between:16:32', 'Must be between 16 and 32 characters.' ],
-                [ '#secret_key', /^[a-zA-Z2-7 ]{16,32}$/, 'Only A-Z and 2-7 allowed.']
+                [ '.secret_key', 'between:16:32', 'Between 16 and 32 characters' ],
+                [ '.secret_key', /^[a-zA-Z2-7 ]*$/, 'Only A-Z and 2-7'],
+                [ '.secret_name', 'max-length:32', '32 characters or less']
             ];
 
             var options = {
@@ -321,7 +372,7 @@
              
             $( "#buildForm" ).nod( metrics, options );
 
-            $("#secret_key").keydown(function (e) {
+            $(".secret_key").keydown(function (e) {
             if (e.keyCode == 32) {
                 return false;
                 }
@@ -329,128 +380,184 @@
                 $(this).val(function (i, v) { return v.replace(/ /g, ""); }); 
             });
 
+            var today = new Date();
+
+            //This is completely ridiculous.
+            var jan = new Date(today.getFullYear(), 0, 1).getTimezoneOffset();
+            var jun = new Date(today.getFullYear(), 6, 1).getTimezoneOffset();
+            var today = today.getTimezoneOffset();
+
+            if(jan == jun) {
+                $('#daylight_savings').prop('checked', false);
+            } else if(jan > jun) {
+                //Northern hemisphere
+                $('#daylight_savings').prop('checked', (jun==today));
+            } else { //jun < jan
+                //Southern hemisphere
+                $('#daylight_savings').prop('checked', (jan==today));
+            }
+    
+
             var resources;
+
+            //TODO: This somewhat duplicates the validation in nod.
+            function normalizeKey(key) {
+                if(key.length != 3) {
+                    console.log("Key did not have 3 elements");
+                    return null;
+                }
+                var type = key[0];
+                var name = key[1];
+                var secret = key[2].replace(" ", "");
+
+                if(name.length > 32) {
+                    console.log("Name was longer than 32 characters");
+                    return null;
+                }
+                if(secret.length != 16 && secret.length != 32) {
+                    console.log("Secret was not 16 or 32 characters long");
+                    return null;
+                }
+                if(!secret.match(/^[a-zA-Z2-7]+$/)) {
+                    console.log("Secret is not valid Base32");
+                    return null;
+                }
+
+
+                while(name.length < 32)
+                    name += " "; //TODO: Non-optimal
+
+                secret = secret.toUpperCase();
+                while(secret.length < 32)
+                    secret += " "; //TODO: Non-optimal
+
+                return {type:type, name:name, secret:secret};
+            }
+
+            var keyCount, keyBlock, nameBlock, timezone, isDST, resources, pebbleapp, zip;
 
             var buildCustom = function ( event, data ) {
                     console.log("Building...");
 
-                    $("#secret_key").val($("#secret_key").val().toUpperCase());
+                    var keys = [];
+                    var raw = [];
 
-                    var secret_key = $("#secret_key").val() + "\n";
-                    var timezone = $("#timezone").val();
+                    $('.secret_group').each(
+                        function(j, g) {
+                            var k =
+                                $(g).children().children().children().map(
+                                    function(i,e){ 
+                                        if($(e).val() != "") {
+                                            return $(e).val()
+                                        }
+                                    }
+                                );
+                            var n = normalizeKey(k);
+                            if(n != null) {
+                                keys.push(n);
+                            }
+                        }
+                    );
 
-                    if($("#daylight_savings").is(":checked")) {
-                        timezone = String.fromCharCode(timezone.charCodeAt(0)+1);
+                    keyCount = keys.length.toString();
+
+                    console.log("Discovered " + keys.length + " valid keys");
+
+                    while(keys.length < 8) { //Target key count
+                        keys.push({
+                            type  : "empty",
+                            name  : "                                ",
+                            secret: "                                "
+                        });
                     }
 
-                    timezone += "\n";
+                    keyBlock = "";
 
-                    var zip = new JSZip(baseData);
-                    resources = zip.file("app_resources.pbpack").asUint8Array();
+                    for(var i=0; i < 8; i++) {
+                        keyBlock += keys[i].secret + "\n";
+                    }
+
+                    keyBlock = keyBlock.slice(0,-1); //TODO: Refactor to join
+
+                    nameBlock = "";
+
+                    for(var i=0; i < 8; i++) {
+                        nameBlock += keys[i].name + "\n";
+                    }
+
+                    nameBlock = nameBlock.slice(0,-1);
+
+                    timezone = $("#timezone").val() + "\n";
+
+                    isDST = ($("#daylight_savings").is(":checked") ? 'Y' : 'N');
+
                     var manifest = JSON.parse(zip.file("manifest.json").asText());
-                    pebbleapp = zip.file("pebble-app.bin").asUint8Array();
-
-                    var old_resource_crc = crc32_a(resources.subarray(4124));
-                    var old_app_crc = crc32_a(pebbleapp.subarray(124,2760))
 
                     // in app_resources.pbpack...
                     // 40-43 = crc of time zone (little endian)
                     // 56-59 = crc of secret key (little endian)
-                    // 4124 = time zone
-                    // 4126 = secret key
+                    // 72-75 = crc of names
+                    // 88-91 = crc of count
+                    // 104-107 = crc of DST
+                    // 4124-4125 = time zone + \n
+                    // 4126 = secret key block
+                    // 4389 = key name block
+                    // 4652 = key count
+                    // 4653 = isDST
                     // We'll move this over to more elegant parsing in the future.
                     // Take a look at the future branch for some steps towards that.
 
-                    var secret_key_crc = crc32(secret_key), timezone_crc = crc32(timezone);
+                    function replace32(array, offset, val, name) {
+                        var old = ((array[offset + 3] & 0xFF) << 24) >>> 0 |
+                                  ((array[offset + 2] & 0xFF) << 16) >>> 0 |
+                                  ((array[offset + 1] & 0xFF) << 8) >>> 0  |
+                                  ((array[offset + 0] & 0xFF) << 0) >>> 0;
+                        old = old >>> 0;
 
-                    var old_timezone_crc = ((resources[43] & 0xFF) << 24) |
-                                           ((resources[42] & 0xFF) << 16) |
-                                           ((resources[41] & 0xFF) << 8) |
-                                           ((resources[40] & 0xFF) << 0);
+                        console.log("Old "+name+" CRC: " + old.toString(16));
 
-                    console.log("Old timezone crc: " + old_timezone_crc.toString(16));
+                        array[offset + 3] = (val >>> 24) & 0xFF;
+                        array[offset + 2] = (val >>> 16) & 0xFF;
+                        array[offset + 1] = (val >>> 8)  & 0xFF;
+                        array[offset + 0] = (val >>> 0)  & 0xFF;
 
-                    resources[43] = (timezone_crc >>> 24) & 0xFF;
-                    resources[42] = (timezone_crc >>> 16) & 0xFF;
-                    resources[41] = (timezone_crc >>> 8) & 0xFF;
-                    resources[40] = (timezone_crc >>> 0) & 0xFF;
+                        console.log("New "+name+" CRC: " + val.toString(16));
 
-                    console.log("New timezone crc: " + timezone_crc.toString(16));
-
-                    var old_key_crc = ((resources[59] & 0xFF) << 24) |
-                                      ((resources[58] & 0xFF) << 16) |
-                                      ((resources[57] & 0xFF) << 8) |
-                                      ((resources[56] & 0xFF) << 0);
-
-                    resources[59] = (secret_key_crc >>> 24) & 0xFF;
-                    resources[58] = (secret_key_crc >>> 16) & 0xFF;
-                    resources[57] = (secret_key_crc >>> 8) & 0xFF;
-                    resources[56] = (secret_key_crc >>> 0) & 0xFF;
-
-                    console.log("Old key crc: " + old_key_crc.toString(16));
-                    console.log("New key crc: " + secret_key_crc.toString(16));
-
-                    var timezone_code = timezone.charCodeAt(0);
-                    var timezone_diff = timezone_code - "<".charCodeAt(0);
-
-                    var old_timezone_code = resources[4124];
-                    var old_timezone_diff = old_timezone_code - "<".charCodeAt(0);
-
-                    if( old_timezone_diff > 0 ) {
-                        console.log("Old timezone was GMT+" + old_timezone_diff);
-                    } else if ( old_timezone_diff < 0 ) {
-                        console.log("Old timezone was GMT" + old_timezone_diff);
-                    } else {
-                        console.log("Old timezone was GMT");
                     }
 
-                    if( timezone_diff > 0 ) {
-                        console.log("Setting timezone to GMT+" + timezone_diff);
-                    } else if ( timezone_diff < 0 ) {
-                        console.log("Setting timezone to GMT" + timezone_diff);
-                    } else {
-                        console.log("Setting timezone to GMT");
+                    function replaceResource(header, offset, val, name) {
+                        var identical = true;
+                        for(var x=0;x<val.length;x++) {
+                            var left = resources[offset+x];
+                            var right = val[x].charCodeAt(0);
+                            if(left != right) identical = false;
+                            resources[offset+x] = val[x].charCodeAt(0);
+                        }
+
+                        console.log("Identical replacement for " + name);
+
+                        var crc = crc32(val);
+                        replace32(resources, header, crc, name);
                     }
 
-                    resources[4124] = timezone[0].charCodeAt(0);
-                    resources[4125] = timezone[1].charCodeAt(0);
-
-                    console.log("Setting secret key to " + $("#secret_key").val())
-
-                    for(var i=0; i < secret_key.length; ++i) {
-                        resources[4126 + i] = secret_key.charCodeAt(i);
-                    }
+                    replaceResource(40, 4124, timezone, "timezone");
+                    replaceResource(56, 4126, keyBlock, "secret keys");
+                    replaceResource(72, 4389, nameBlock, "key names");
+                    replaceResource(88, 4652, keyCount, "key count");
+                    replaceResource(104, 4653, isDST, "DST");
 
                     var resource_crc = crc32_a(resources.subarray(4124));
 
-                    resources[7] = (resource_crc >>> 24) & 0xFF;
-                    resources[6] = (resource_crc >>> 16) & 0xFF;
-                    resources[5] = (resource_crc >>> 8) & 0xFF;
-                    resources[4] = (resource_crc >>> 0) & 0xFF;
+                    replace32(resources, 4, resource_crc, "master resource");
 
-                    console.log("Old resource crc: " + old_resource_crc.toString(16));
-                    console.log("New resource crc: " + resource_crc.toString(16));
-
-                    pebbleapp[127] = (resource_crc >>> 24) & 0xFF;
-                    pebbleapp[126] = (resource_crc >>> 16) & 0xFF;
-                    pebbleapp[125] = (resource_crc >>> 8) & 0xFF;
-                    pebbleapp[124] = (resource_crc >>> 0) & 0xFF;
+                    replace32(pebbleapp, 124, resource_crc, "app resources");
 
                     manifest['resources']['crc'] = crc32_a(resources);
 
                     // 124 is the length of the header.
-                    // 2760 is 20 less (4 bytes per reloc, 5 relocs) than the size of the PBW.
+                    // 3896 is where the reloc table begins.
                     // In the future we'll follow the table to get these.
-                    var app_crc = crc32_a(pebbleapp.subarray(124,2760))
-
-                    console.log("Old app crc: " + old_app_crc.toString(16));
-                    console.log("New app crc: " + app_crc.toString(16));
-
-                    pebbleapp[23] = (app_crc >>> 24) & 0xFF;
-                    pebbleapp[22] = (app_crc >>> 16) & 0xFF;
-                    pebbleapp[21] = (app_crc >>> 8) & 0xFF;
-                    pebbleapp[20] = (app_crc >>> 0) & 0xFF;
-
+                    replace32(pebbleapp, 20, crc32_a(pebbleapp.subarray(124,3896)), "master app")
 
                     zip.file("app_resources.pbpack", resources);
                     zip.file("manifest.json", JSON.stringify(manifest));
@@ -467,6 +574,10 @@
             xhr.onreadystatechange = function(e) {
                 if (this.readyState == 4 && this.status == 200) {
                   baseData = this.responseText;
+                  zip = new JSZip(baseData);
+                  resources = zip.file("app_resources.pbpack").asUint8Array();
+                  pebbleapp = zip.file("pebble-app.bin").asUint8Array();
+
 
                   $("#buildButton").addClass("btn-primary").text("1. Build it!");
                   $("#buildForm").on( 'silentSubmit', buildCustom);
