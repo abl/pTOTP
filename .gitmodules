@@ -1,3 +1,0 @@
-[submodule "google-authenticator"]
-	path = google-authenticator
-	url = https://code.google.com/p/google-authenticator
