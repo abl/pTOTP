@@ -16,6 +16,10 @@
 #include "unixtime.h"
 #include "timezone.h"
 
+#define TIME_ZONE_KEY   1
+#define IS_DST_KEY      2
+#define KEY_INDEX_KEY   3
+
 Window *window;
 
 TextLayer *currentKey, *currentCode, *currentTime, *currentOffset;
@@ -185,7 +189,7 @@ void bar_layer_update(Layer *l, GContext* ctx) {
 // Standard app init
 
 void handle_init() {
-  keyIndex = 0;
+  keyIndex = (persist_exists(KEY_INDEX_KEY) ? persist_read_int(KEY_INDEX_KEY) : 0);
 
   unsigned char offset = '0';
   unsigned char rawDST = 'N';
@@ -193,11 +197,11 @@ void handle_init() {
 
   resource_load_byte_range(resource_get_handle(RESOURCE_ID_GMT_OFFSET), 0, &offset, 1);
 
-  timeZoneIndex = offset - '0';
+  timeZoneIndex = (persist_exists(TIME_ZONE_KEY) ? persist_read_int(TIME_ZONE_KEY) : (offset - '0'));
 
   resource_load_byte_range(resource_get_handle(RESOURCE_ID_IS_DST), 0, &rawDST, 1);
 
-  isDST = (rawDST == 'Y');
+  isDST = (persist_exists(IS_DST_KEY) ? persist_read_bool(IS_DST_KEY) : (rawDST == 'Y'));
 
   resource_load_byte_range(resource_get_handle(RESOURCE_ID_SECRET_COUNT), 0, &rawCount, 1);
 
@@ -250,6 +254,10 @@ void handle_tick(struct tm* tick_time, TimeUnits units_changed) {
 }
 
 void handle_deinit() {
+  persist_write_int(TIME_ZONE_KEY, timeZoneIndex);
+  persist_write_bool(IS_DST_KEY, isDST);
+  persist_write_bool(KEY_INDEX_KEY, keyIndex);
+  
   text_layer_destroy(currentOffset);
   text_layer_destroy(currentTime);
   text_layer_destroy(currentCode);
