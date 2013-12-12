@@ -15,20 +15,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "pebble_os.h"
+#include <time.h>
 
 unsigned int get_unix_time(int tm_tz)
 {
-  PblTm curr_time;
-  get_time(&curr_time);
-  unsigned int now = 0;
-  now += (curr_time.tm_year-70)*31536000;
-  now += ((curr_time.tm_year-69)/4)*86400;
-  now -= ((curr_time.tm_year-1)/100)*86400;
-  now += ((curr_time.tm_year+299)/400)*86400;
-  now += curr_time.tm_yday*86400;
-  now += (curr_time.tm_hour+(tm_tz))*3600;
-  now += curr_time.tm_min*60;
-  now += curr_time.tm_sec;
-  return now;
+  return time(NULL) + (tm_tz * 3600);
 }

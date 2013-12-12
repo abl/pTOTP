@@ -10,26 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
+#include "pebble.h"
 
 #include "generate.h"
 #include "unixtime.h"
 #include "timezone.h"
 
-#define MY_UUID { 0xF3, 0x61, 0x70, 0x30, 0x87, 0x06, 0x43, 0xB6, 0xAD, 0xDE, 0xD7, 0x3F, 0xDB, 0x38, 0x02, 0x44 }
-PBL_APP_INFO(MY_UUID,
-             "pTOTP", "Public Domain",
-             1, 0, /* App version */
-             DEFAULT_MENU_ICON,
-             APP_INFO_STANDARD_APP);
+Window *window;
 
-Window window;
+TextLayer *currentKey, *currentCode, *currentTime, *currentOffset;
 
-TextLayer currentKey, currentCode, currentTime, currentOffset;
-
-Layer barLayer;
+Layer *barLayer;
 
 unsigned short keyCount = 8;
 unsigned short keyIndex = 0;
@@ -45,7 +36,7 @@ void redraw(unsigned int code) {
     code /= 10;
   }
 
-  text_layer_set_text(&currentCode, codeDisplayBuffer);
+  text_layer_set_text(currentCode, codeDisplayBuffer);
 }
 
 
@@ -61,11 +52,11 @@ void recode(char *secretKey, bool keyChange) {
   const char *key = secretKey;
 
   if(timeZoneIndex != oldTimeZoneIndex) {
-    text_layer_set_text(&currentTime, tz_names[timeZoneIndex]);
+    text_layer_set_text(currentTime, tz_names[timeZoneIndex]);
     oldTimeZoneIndex = timeZoneIndex;
     offset = (tz_offsets[timeZoneIndex]+(isDST ? 3600 : 0));
     snprintf(offsetText, sizeof(offsetText), "%d:%.2d", offset/(60*60), abs((offset/60)%60));
-    text_layer_set_text(&currentOffset, offsetText);
+    text_layer_set_text(currentOffset, offsetText);
   }
 
   unsigned long utcTime = time(NULL)-offset;
@@ -112,7 +103,7 @@ void reload() {
     strip(secretName, 32);
     oldKeyIndex = keyIndex;
 
-    text_layer_set_text(&currentKey, secretName);
+    text_layer_set_text(currentKey, secretName);
     recode(secretKey, true);
   }
   else
@@ -122,7 +113,7 @@ void reload() {
 
 // Modify these common button handlers
 
-void up_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
+void up_single_click_handler(ClickRecognizerRef recognizer, void *window) {
   (void)recognizer;
   (void)window;
 
@@ -134,7 +125,7 @@ void up_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
 }
 
 
-void down_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
+void down_single_click_handler(ClickRecognizerRef recognizer, void *window) {
   (void)recognizer;
   (void)window;
 
@@ -145,7 +136,7 @@ void down_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
   reload();
 }
 
-void select_single_click_handler(ClickRecognizerRef recognizer, Window *window) {
+void select_single_click_handler(ClickRecognizerRef recognizer, void *window) {
   (void)recognizer;
   (void)window;
 
@@ -160,16 +151,12 @@ void select_single_click_handler(ClickRecognizerRef recognizer, Window *window) 
 
 // This usually won't need to be modified
 
-void click_config_provider(ClickConfig **config, Window *window) {
-  (void)window;
+void click_config_provider(void * context) {
+  window_single_click_subscribe(BUTTON_ID_SELECT, select_single_click_handler);
 
-  config[BUTTON_ID_SELECT]->click.handler = (ClickHandler) select_single_click_handler;
+  window_single_repeating_click_subscribe(BUTTON_ID_UP, 100, up_single_click_handler);
 
-  config[BUTTON_ID_UP]->click.handler = (ClickHandler) up_single_click_handler;
-  config[BUTTON_ID_UP]->click.repeat_interval_ms = 100;
-
-  config[BUTTON_ID_DOWN]->click.handler = (ClickHandler) down_single_click_handler;
-  config[BUTTON_ID_DOWN]->click.repeat_interval_ms = 100;
+  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 100, down_single_click_handler);
 }
 
 void bar_layer_update(Layer *l, GContext* ctx) {
@@ -197,10 +184,7 @@ void bar_layer_update(Layer *l, GContext* ctx) {
 
 // Standard app init
 
-void handle_init(AppContextRef ctx) {
-  (void)ctx;
-  resource_init_current_app(&APP_RESOURCES);
-
+void handle_init() {
   keyIndex = 0;
 
   unsigned char offset = '0';
@@ -219,60 +203,64 @@ void handle_init(AppContextRef ctx) {
 
   keyCount = rawCount - '0';
   
-  window_init(&window, "pTOTP");
-  window_stack_push(&window, true /* Animated */);
+  window = window_create();
+  window_stack_push(window, true /* Animated */);
 
   //Great for debugging the layout.
   //window_set_background_color(&window, GColorBlack);
 
-  layer_init(&barLayer, GRect(0,70,window.layer.frame.size.w,5));
-  barLayer.update_proc = &bar_layer_update;
-  layer_add_child(&window.layer, &barLayer);
+  Layer* rootLayer = window_get_root_layer(window);
+  GRect rootLayerRect = layer_get_bounds(rootLayer);
+  barLayer = layer_create(GRect(0,70,rootLayerRect.size.w,5));
+  layer_set_update_proc(barLayer, bar_layer_update);
+  layer_add_child(rootLayer, barLayer);
 
-  text_layer_init(&currentKey, GRect(0,0,window.layer.frame.size.w,22));
-  text_layer_set_font(&currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-  text_layer_set_text_alignment(&currentKey, GTextAlignmentCenter);
-  layer_add_child(&window.layer, &currentKey.layer);
+  currentKey = text_layer_create(GRect(0,0,rootLayerRect.size.w,22));
+  text_layer_set_font(currentKey, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  text_layer_set_text_alignment(currentKey, GTextAlignmentCenter);
+  layer_add_child(rootLayer, text_layer_get_layer(currentKey));
 
-  text_layer_init(&currentCode, GRect(0,32,window.layer.frame.size.w,36));
-  text_layer_set_font(&currentCode, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
-  text_layer_set_text_alignment(&currentCode, GTextAlignmentCenter);
-  layer_add_child(&window.layer, &currentCode.layer);
+  currentCode = text_layer_create(GRect(0,32,rootLayerRect.size.w,36));
+  text_layer_set_font(currentCode, fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS));
+  text_layer_set_text_alignment(currentCode, GTextAlignmentCenter);
+  layer_add_child(rootLayer, text_layer_get_layer(currentCode));
 
-  text_layer_init(&currentTime, GRect(0,window.layer.frame.size.h-(15+22),(window.layer.frame.size.w/3)*2,22));
-  text_layer_set_font(&currentTime, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-  text_layer_set_text_alignment(&currentTime, GTextAlignmentLeft);
-  layer_add_child(&window.layer, &currentTime.layer);
+  currentTime = text_layer_create(GRect(0,rootLayerRect.size.h-(15+22),(rootLayerRect.size.w/3)*2,22));
+  text_layer_set_font(currentTime, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  text_layer_set_text_alignment(currentTime, GTextAlignmentLeft);
+  layer_add_child(rootLayer, text_layer_get_layer(currentTime));
 
-  text_layer_init(&currentOffset, GRect((window.layer.frame.size.w/3)*2,window.layer.frame.size.h-(15+22),window.layer.frame.size.w/3,22));
-  text_layer_set_font(&currentOffset, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-  text_layer_set_text_alignment(&currentOffset, GTextAlignmentRight);
-  layer_add_child(&window.layer, &currentOffset.layer);
+  currentOffset = text_layer_create(GRect((rootLayerRect.size.w/3)*2,rootLayerRect.size.h-(15+22),rootLayerRect.size.w/3,22));
+  text_layer_set_font(currentOffset, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+  text_layer_set_text_alignment(currentOffset, GTextAlignmentRight);
+  layer_add_child(rootLayer, text_layer_get_layer(currentOffset));
 
   // Attach our desired button functionality
-  window_set_click_config_provider(&window, (ClickConfigProvider) click_config_provider);
+  window_set_click_config_provider(window, (ClickConfigProvider) click_config_provider);
 
   reload();
 }
 
-void handle_tick(AppContextRef ctx, PebbleTickEvent *event) {
+void handle_tick(struct tm* tick_time, TimeUnits units_changed) {
   //(void)ctx;
   //(void)event;
 
   reload();
-  layer_mark_dirty(&barLayer);
-
+  layer_mark_dirty(barLayer);
 }
 
+void handle_deinit() {
+  text_layer_destroy(currentOffset);
+  text_layer_destroy(currentTime);
+  text_layer_destroy(currentCode);
+  text_layer_destroy(currentKey);
+  layer_destroy(barLayer);
+  window_destroy(window);
+}
 
-void pbl_main(void *params) {
-
-  PebbleAppHandlers handlers = {
-    .init_handler = &handle_init,
-    .tick_info = {
-      .tick_handler = &handle_tick,
-      .tick_units = SECOND_UNIT
-    }
-  };
-  app_event_loop(params, &handlers);
+int main() {
+  handle_init();
+  tick_timer_service_subscribe(SECOND_UNIT, handle_tick);
+  app_event_loop();
+  handle_deinit();
 }
