@@ -1,0 +1,43 @@
+{
+  "uuid": "f3617030-8706-43b6-adde-d73fdb380244",
+  "shortName": "pTOTP",
+  "longName": "pTOTP",
+  "companyName": "Public Domain",
+  "versionCode": 2,
+  "versionLabel": "2.0.0",
+  "watchapp": {
+    "watchface": false
+  },
+  "appKeys": {
+    "dummy": 0
+  },
+  "resources": {
+    "media": [
+      {
+        "type":"raw",
+        "name":"GMT_OFFSET",
+        "file":"gmt_offset.bin"
+       },
+       {
+       "type":"raw",
+       "name":"SECRET_KEY",
+       "file":"secret_key.txt"
+       },
+       {
+       "type":"raw",
+       "name":"SECRET_NAME",
+       "file":"key_names.txt"
+       },
+       {
+       "type":"raw",
+       "name":"SECRET_COUNT",
+       "file":"key_count.txt"
+       },
+       {
+       "type":"raw",
+       "name":"IS_DST",
+       "file":"is_dst.bin"
+       }
+    ]
+  }
+}
