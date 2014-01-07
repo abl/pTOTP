@@ -26,3 +26,6 @@ Up/down will change the GMT offset; note that due to current limitations of the 
 Center will cause the current code to be displayed.
 
 The second line is the code; the third line is the current GMT offset; the fourth line is the countdown to code expiry. When the code expires, the display is cleared as a security measure.
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/abl/ptotp/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
